@@ -26,7 +26,7 @@
 
 	am33xx_pinmux: pinmux@44e10800 {
 		pinctrl-names = "default";
-		pinctrl-0 = <&matrix_keypad_s0 &volume_keys_s0 &clkout2_pin>;
+		pinctrl-0 = <&matrix_keypad_s0 &volume_keys_s0 &clkout2_pin &mmc2_pins &wlan_pins>;
 
 		matrix_keypad_s0: matrix_keypad_s0 {
 			pinctrl-single,pins = <
@@ -69,6 +69,28 @@
 		clkout2_pin: pinumx_clkout2_pin {
 			pinctrl-single,pins = <
 				0x1b4 0x03	/* xdma_event_intr1.clkout2 OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT */
+			>;
+		};
+
+		/* wl12xx/wl18xx card on mmc2 */
+		mmc2_pins: pinmux_mmc2_pins {
+			pinctrl-single,pins = <
+				0x44 0x33	/* gpmc_a1.mmc2_dat0, INPUT_PULLUP | MODE3 */
+				0x48 0x33	/* gpmc_a2.mmc2_dat1, INPUT_PULLUP | MODE3 */
+				0x4C 0x33	/* gpmc_a3.mmc2_dat2, INPUT_PULLUP | MODE3 */
+				0x78 0x33	/* gpmc_ben1.mmc2_dat3, INPUT_PULLUP | MODE3 */
+				0x88 0x33	/* gpmc_csn3.mmc2_cmd, INPUT_PULLUP | MODE3 */
+				0x8C 0x33	/* gpmc_clk.mmc2_clk, INPUT_PULLUP | MODE3 */
+			>;
+		};
+
+		/* wl12xx/wl18xx card enable/irq GPIOs.*/
+		wlan_pins: pinmux_wlan_pins {
+			pinctrl-single,pins = <
+				/* WLAN_EN, WLAN_IRQ, BT_EN */
+				0x40 0x7	/* gpmc_a0.gpio1_16, OUTPUT | MODE7 */
+				0x19C 0x27	/* mcasp0_ahclkr.gpio3_17, INPUT | MODE7 */
+				0x1AC 0x17	/* mcasp0_ahclkx.gpio3_21, OUTPUT_PULLUP | MODE7 */
 			>;
 		};
 	};
@@ -154,6 +176,20 @@
 		regulator-boot-on;
 	};
 
+	wlan_en_reg: fixedregulator@2 {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan-en-regulator";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+
+		/* WLAN_EN GPIO - Bank1, pin16 */
+		gpio = <&gpio1 16 0>;
+
+		/* WLAN card specific delay */
+		startup-delay-us = <70000>;
+		enable-active-high;
+	};
+
 	matrix_keypad: matrix_keypad@0 {
 		compatible = "gpio-matrix-keypad";
 		debounce-delay-ms = <5>;
@@ -193,6 +229,18 @@
 			gpios = <&gpio0 3 1>;	/* Bank0, pin3 */
 			gpio-key,wakeup;
 		};
+	};
+
+	wlcore {
+		compatible = "wlcore";
+		gpio = <113>; /* Bank3, pin17 */
+
+		/* use edge irqs for suspend/resume */
+		platform-quirks = <1>;
+
+		/* if a 12xx card is there, configure the clock to
+		   WL12XX_REFCLOCK_38_XTAL */
+		board-ref-clock = <4>;
 	};
 };
 
@@ -307,4 +355,25 @@
 	adc {
 		ti,adc-channels = <4>;
 	};
+};
+
+&mmc3 {
+	/* these are on the crossbar and are outlined in the
+	   xbar-event-map element */
+	dmas = <&edma 12
+		&edma 13>;
+	dma-names = "tx", "rx";
+
+	status = "okay";
+	vmmc-supply = <&wlan_en_reg>;
+	bus-width = <4>;
+	ti,non-removable;
+	ti,needs-special-hs-handling;
+	cap-power-off-card;
+	keep-power-in-suspend;
+};
+
+&edma {
+	ti,edma-xbar-event-map = <1 12
+				  2 13>;
 };
