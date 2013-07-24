@@ -66,6 +66,16 @@
 			>;
 		};
 
+		/* uart1 is used for shared transport */
+		uart1_pins: pinmux_uart1_pins {
+			pinctrl-single,pins = <
+				0x178 0x00 /* uart1_ctsn.uart1_ctsn OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
+				0x17C 0x28 /* uart1_rtsn.uart1_rtsn", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT */
+				0x180 0x30 /* uart1_rxd.uart1_rxd", OMAP_MUX_MODE0 | AM33XX_PIN_INPUT_PULLUP */
+				0x184 0x00 /* uart1_txd.uart1_txd", OMAP_MUX_MODE0 | AM33XX_PULL_ENBL} */
+			>;
+		};
+
 		clkout2_pin: pinumx_clkout2_pin {
 			pinctrl-single,pins = <
 				0x1b4 0x03	/* xdma_event_intr1.clkout2 OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT */
@@ -100,6 +110,13 @@
 		uart0: serial@44e09000 {
 			pinctrl-names = "default";
 			pinctrl-0 = <&uart0_pins>;
+
+			status = "okay";
+		};
+
+		uart1: serial@48022000 {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart1_pins>;
 
 			status = "okay";
 		};
@@ -242,6 +259,18 @@
 		/* if a 12xx card is there, configure the clock to
 		   WL12XX_REFCLOCK_38_XTAL */
 		board-ref-clock = <4>;
+	};
+
+	kim {
+		compatible = "kim";
+		nshutdown_gpio = <117>; /* Bank3, pin21 */
+		dev_name = "/dev/ttyO1";
+		flow_cntrl = <1>;
+		baud_rate = <3000000>;
+	};
+
+	btwilink {
+		compatible = "btwilink";
 	};
 };
 
